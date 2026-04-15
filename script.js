@@ -1,0 +1,422 @@
+// --- PAGE ROUTING & UI SETUP ---
+document.addEventListener('DOMContentLoaded', () => {
+    // Initial Loader
+    setTimeout(() => {
+        const loader = document.getElementById('loading-screen');
+        loader.style.opacity = '0';
+        setTimeout(() => loader.style.display = 'none', 500);
+    }, 1500);
+
+    // Login Form Submit
+    document.getElementById('login-form').addEventListener('submit', (e) => {
+        e.preventDefault();
+        // Hide Login, Show Dashboard structure
+        document.getElementById('login-page').classList.remove('active');
+        document.getElementById('sidebar').classList.remove('hidden');
+        document.getElementById('sidebar').classList.add('flex');
+        document.getElementById('top-header').classList.remove('hidden');
+        document.getElementById('top-header').classList.add('flex');
+        
+        switchPage('dashboard');
+        
+        // Start simulation after login
+        startSimulation();
+    });
+
+    // Navigation Logic
+    const navBtns = document.querySelectorAll('.nav-btn');
+    const pages = document.querySelectorAll('.page');
+
+    function switchPage(targetId) {
+        // Update nav buttons
+        navBtns.forEach(btn => {
+            if (btn.dataset.target === targetId) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+        });
+
+        // Update pages
+        pages.forEach(page => {
+            if (page.id === targetId + '-page') {
+                page.classList.add('active');
+            } else {
+                page.classList.remove('active');
+            }
+        });
+    }
+
+    navBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            if (btn.dataset.target) switchPage(btn.dataset.target);
+        });
+    });
+
+    // Logout
+    document.getElementById('logout-btn').addEventListener('click', () => {
+        document.getElementById('sidebar').classList.add('hidden');
+        document.getElementById('sidebar').classList.remove('flex');
+        document.getElementById('top-header').classList.add('hidden');
+        document.getElementById('top-header').classList.remove('flex');
+        switchPage('login');
+        stopSimulation();
+    });
+
+    // Notifications Dropdown
+    const notifToggle = document.getElementById('notif-toggle');
+    const notifDropdown = document.getElementById('notif-dropdown');
+    
+    notifToggle.addEventListener('click', () => {
+        notifDropdown.classList.toggle('hidden');
+        document.getElementById('notif-badge').classList.add('hidden'); // Clear badge on read
+    });
+
+    // Mobile Menu Toggle
+    document.getElementById('mobile-menu-btn').addEventListener('click', () => {
+        const sidebar = document.getElementById('sidebar');
+        if (sidebar.classList.contains('hidden')) {
+            sidebar.classList.remove('hidden');
+            sidebar.classList.add('flex', 'absolute', 'h-full', 'z-50');
+        } else {
+            sidebar.classList.add('hidden');
+            sidebar.classList.remove('flex', 'absolute', 'h-full', 'z-50');
+        }
+    });
+
+    // SOS Modal Dismiss
+    document.getElementById('dismiss-sos').addEventListener('click', () => {
+        document.getElementById('sos-modal').classList.add('hidden');
+    });
+});
+
+// --- DATA SIMULATION ---
+
+let simulationInterval;
+let chartInstance;
+const maxDataPoints = 30;
+
+// Data States
+const chartData = {
+    labels: Array(maxDataPoints).fill(''),
+    bpm: Array(maxDataPoints).fill(80),
+    spo2: Array(maxDataPoints).fill(98)
+};
+
+const workers = [
+    { id: 'W-402', name: 'Alex Santos', status: 'Active', bpm: 82, fatigue: 'Normal', coords: { x: 30, y: 40 } },
+    { id: 'W-119', name: 'Sarah Jenkins', status: 'Warning', bpm: 104, fatigue: 'Caution', coords: { x: 60, y: 20 } },
+    { id: 'W-550', name: 'Marcus Chen', status: 'Active', bpm: 75, fatigue: 'Normal', coords: { x: 20, y: 70 } },
+    { id: 'W-893', name: 'Elena Rostova', status: 'Active', bpm: 88, fatigue: 'Normal', coords: { x: 80, y: 80 } },
+    { id: 'W-211', name: 'James O\'Connor', status: 'Active', bpm: 79, fatigue: 'Normal', coords: { x: 50, y: 50 } }
+];
+
+let criticalAlertsCount = 0;
+
+function startSimulation() {
+    initChart();
+    renderWorkersTable();
+    renderRadar();
+    renderFatigueAI();
+    
+    simulationInterval = setInterval(() => {
+        updateVitals();
+        updateGasses();
+        moveWorkersLoc();
+        randomEventGenerator();
+    }, 2000);
+}
+
+function stopSimulation() {
+    clearInterval(simulationInterval);
+}
+
+// Chart.js Initialization
+function initChart() {
+    const ctx = document.getElementById('vitalsChart').getContext('2d');
+    
+    // Gradient for BPM line
+    const gradientBpm = ctx.createLinearGradient(0, 0, 0, 400);
+    gradientBpm.addColorStop(0, 'rgba(0, 209, 255, 0.5)');   
+    gradientBpm.addColorStop(1, 'rgba(0, 209, 255, 0.0)');
+
+    const gradientSpO2 = ctx.createLinearGradient(0, 0, 0, 400);
+    gradientSpO2.addColorStop(0, 'rgba(0, 255, 163, 0.5)');   
+    gradientSpO2.addColorStop(1, 'rgba(0, 255, 163, 0.0)');
+
+    Chart.defaults.color = '#94A3B8';
+    Chart.defaults.font.family = 'Inter';
+
+    chartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: chartData.labels,
+            datasets: [
+                {
+                    label: 'Avg Heart Rate (BPM)',
+                    data: chartData.bpm,
+                    borderColor: '#00D1FF',
+                    backgroundColor: gradientBpm,
+                    borderWidth: 2,
+                    tension: 0.4,
+                    fill: true,
+                    pointRadius: 0,
+                    pointHoverRadius: 4
+                },
+                {
+                    label: 'Avg SpO2 (%)',
+                    data: chartData.spo2,
+                    borderColor: '#00FFA3',
+                    backgroundColor: gradientSpO2,
+                    borderWidth: 2,
+                    tension: 0.4,
+                    fill: true,
+                    pointRadius: 0,
+                    pointHoverRadius: 4
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: {
+                duration: 500,
+                easing: 'linear'
+            },
+            scales: {
+                y: {
+                    min: 50,
+                    max: 120,
+                    grid: { color: 'rgba(255,255,255,0.05)' }
+                },
+                x: {
+                    grid: { display: false },
+                    ticks: { display: false } // Hide x-axis labels
+                }
+            },
+            plugins: {
+                legend: { position: 'top', align: 'end', labels: { boxWidth: 12, usePointStyle: true } },
+                tooltip: { mode: 'index', intersect: false, backgroundColor: '#121620', titleColor: '#fff', bodyColor: '#fff', borderColor: '#333', borderWidth: 1 }
+            }
+        }
+    });
+}
+
+function updateVitals() {
+    // Generate new average data
+    const lastBpm = chartData.bpm[chartData.bpm.length - 1];
+    const newBpm = lastBpm + (Math.random() * 6 - 3); // Drift smoothly +/- 3
+    
+    // Constrain BPM realistically
+    const finalBpm = Math.max(60, Math.min(110, newBpm));
+    
+    // SpO2 stays between 95 and 100
+    const newSpo2 = 95 + Math.random() * 4.9;
+
+    // Shift arrays
+    chartData.labels.shift();
+    chartData.labels.push('');
+    chartData.bpm.shift();
+    chartData.bpm.push(finalBpm);
+    chartData.spo2.shift();
+    chartData.spo2.push(newSpo2);
+
+    // Update Top Cards
+    document.getElementById('stat-bpm').innerText = Math.round(finalBpm);
+    document.getElementById('stat-temp').innerText = (37.0 + Math.random() * 0.5).toFixed(1);
+
+    // Update chart
+    chartInstance.update('none'); // Update without full redeploy animation
+}
+
+function updateGasses() {
+    // Baseline Gases
+    const ch4 = (Math.random() * 0.3).toFixed(2); // Normal < 1.0%
+    const co = Math.floor(Math.random() * 15);    // Normal < 25ppm
+    
+    const ch4Card = document.getElementById('gas-ch4-card');
+    const ch4Warn = document.getElementById('gas-ch4-warnbg');
+    const ch4Bar = document.getElementById('gas-ch4-bar');
+    
+    document.getElementById('gas-ch4-val').innerHTML = `${ch4}<span class="text-sm text-textMuted ml-1">%</span>`;
+    ch4Bar.style.width = `${Math.min(100, ch4 * 100)}%`;
+    
+    if (ch4 > 0.25) {
+        ch4Bar.classList.replace('bg-neonGreen', 'bg-neonRed');
+        ch4Warn.style.opacity = '1';
+        if (Math.random() > 0.8) pushNotification('Methane Spike Detected Sector G');
+    } else {
+        ch4Bar.classList.replace('bg-neonRed', 'bg-neonGreen');
+        ch4Warn.style.opacity = '0';
+    }
+
+    const coBar = document.getElementById('gas-co-bar');
+    document.getElementById('gas-co-val').innerHTML = `${co}<span class="text-sm text-textMuted ml-1">ppm</span>`;
+    coBar.style.width = `${Math.min(100, (co/50)*100)}%`;
+}
+
+// Worker Management Functions
+function renderWorkersTable() {
+    const tbody = document.getElementById('worker-table-body');
+    tbody.innerHTML = '';
+    
+    workers.forEach(w => {
+        let statusBadge = `<span class="bg-neonGreen/10 text-neonGreen px-2 py-1 rounded text-xs font-semibold">Active</span>`;
+        if (w.status === 'Warning') statusBadge = `<span class="bg-neonYellow/10 text-neonYellow px-2 py-1 rounded text-xs font-semibold">Warning</span>`;
+        if (w.status === 'Critical') statusBadge = `<span class="bg-neonRed/10 text-neonRed px-2 py-1 rounded text-xs font-semibold animate-pulse">Critical</span>`;
+
+        let fatigueColor = w.fatigue === 'Normal' ? 'text-neonGreen' : (w.fatigue === 'Caution' ? 'text-neonYellow' : 'text-neonRed');
+
+        tbody.innerHTML += `
+            <tr class="hover:bg-white/5 transition-colors">
+                <td class="px-6 py-4 font-mono text-xs">${w.id}</td>
+                <td class="px-6 py-4 font-medium">${w.name}</td>
+                <td class="px-6 py-4">${statusBadge}</td>
+                <td class="px-6 py-4">${w.bpm} BPM</td>
+                <td class="px-6 py-4 font-semibold ${fatigueColor}">${w.fatigue}</td>
+                <td class="px-6 py-4 text-center">
+                    <button class="text-textMuted hover:text-white transition" title="View Profile"><i class="fa-solid fa-expand"></i></button>
+                    <button class="ml-3 text-neonRed hover:text-red-500 transition" title="Trigger Manual SOS" onclick="triggerSOS('${w.id}', '${w.name}')"><i class="fa-solid fa-triangle-exclamation"></i></button>
+                </td>
+            </tr>
+        `;
+    });
+}
+
+function renderFatigueAI() {
+    const list = document.getElementById('fatigue-list');
+    list.innerHTML = '';
+    const sorted = [...workers].sort((a,b) => b.bpm - a.bpm).slice(0, 3); // Top 3 highest BPM
+
+    sorted.forEach(w => {
+        let color = 'bg-neonGreen';
+        let bg = 'bg-neonGreen/10';
+        let pct = 15 + Math.random() * 20;
+
+        if (w.fatigue === 'Caution') { color = 'bg-neonYellow'; bg = 'bg-neonYellow/10'; pct = 60 + Math.random() * 20; }
+        if (w.fatigue === 'Exhausted' || w.status === 'Critical') { color = 'bg-neonRed'; bg = 'bg-neonRed/10'; pct = 85 + Math.random() * 15; }
+
+        list.innerHTML += `
+            <div class="flex items-center justify-between p-3 rounded-lg ${bg} border border-white/5">
+                <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-full bg-black/30 flex items-center justify-center font-mono text-xs shadow-inner">
+                        <i class="fa-solid fa-user text-${color.split('-')[1]}"></i>
+                    </div>
+                    <div>
+                        <p class="text-sm font-semibold">${w.name}</p>
+                        <p class="text-xs text-textMuted">Predictive Load: ${Math.round(pct)}%</p>
+                    </div>
+                </div>
+                <div class="${color.replace('bg-', 'text-')} font-bold text-sm">
+                    ${w.fatigue}
+                </div>
+            </div>
+        `;
+    });
+}
+
+function renderRadar() {
+    const radar = document.getElementById('radar-workers');
+    let html = '';
+    workers.forEach(w => {
+        let colorClass = 'text-neonGreen';
+        if(w.status === 'Warning') colorClass = 'text-neonYellow';
+        if(w.status === 'Critical') colorClass = 'text-neonRed';
+
+        html += `<div class="worker-dot bg-current ${colorClass}" style="left: ${w.coords.x}%; top: ${w.coords.y}%;" title="${w.id}"></div>`;
+    });
+    radar.innerHTML = html;
+}
+
+function moveWorkersLoc() {
+    workers.forEach(w => {
+        w.coords.x += (Math.random() * 4 - 2);
+        w.coords.y += (Math.random() * 4 - 2);
+        
+        // Keep in bounds 10 to 90
+        w.coords.x = Math.max(10, Math.min(90, w.coords.x));
+        w.coords.y = Math.max(10, Math.min(90, w.coords.y));
+    });
+    renderRadar();
+}
+
+function randomEventGenerator() {
+    // 5% chance of a random event sequence
+    if (Math.random() < 0.05) {
+        const randomWorker = workers[Math.floor(Math.random() * workers.length)];
+        
+        if (Math.random() > 0.5) {
+            randomWorker.status = 'Warning';
+            randomWorker.fatigue = 'Caution';
+            pushNotification(`Worker ${randomWorker.id} showing elevated fatigue`);
+        } else {
+            // Trigger Critical
+            alertIncrement();
+            randomWorker.status = 'Critical';
+            randomWorker.bpm = 120 + Math.floor(Math.random() * 20);
+            randomWorker.fatigue = 'Exhausted';
+            pushNotification(`URGENT: ${randomWorker.id} Heart Rate Critical (${randomWorker.bpm} BPM)`, true);
+        }
+        
+        renderWorkersTable();
+        renderFatigueAI();
+        
+        // Recover after 10s
+        setTimeout(() => {
+            randomWorker.status = 'Active';
+            randomWorker.fatigue = 'Normal';
+            randomWorker.bpm = 80;
+            renderWorkersTable();
+            renderFatigueAI();
+        }, 12000);
+    }
+}
+
+function pushNotification(msg, isCritical = false) {
+    const list = document.getElementById('notif-list');
+    document.getElementById('notif-badge').classList.remove('hidden'); // show badge
+
+    const time = new Date().toLocaleTimeString('en-US', { hour12: false, hour: "numeric", minute: "numeric", second: "numeric" });
+    const color = isCritical ? 'text-neonRed' : 'text-neonYellow';
+    const bg = isCritical ? 'bg-neonRed/10 border-neonRed/50' : 'bg-white/5 border-white/10';
+    const icon = isCritical ? 'fa-triangle-exclamation' : 'fa-bell';
+
+    const el = document.createElement('div');
+    el.className = `p-3 rounded-lg border ${bg} flex gap-3 items-start animate-fade-in`;
+    el.innerHTML = `
+        <i class="fa-solid ${icon} ${color} mt-0.5"></i>
+        <div>
+            <p class="text-sm font-medium ${isCritical ? 'text-white' : 'text-gray-200'}">${msg}</p>
+            <p class="text-xs text-textMuted mt-1">${time}</p>
+        </div>
+    `;
+    
+    list.prepend(el);
+    if(list.children.length > 10) list.removeChild(list.lastChild);
+}
+
+document.getElementById('clear-notif').addEventListener('click', () => {
+    document.getElementById('notif-list').innerHTML = '';
+    document.getElementById('notif-badge').classList.add('hidden');
+});
+
+function alertIncrement() {
+    criticalAlertsCount++;
+    const alertEl = document.getElementById('stat-alerts');
+    const alertCard = document.getElementById('stat-alert-card');
+    
+    alertEl.innerText = criticalAlertsCount;
+    alertCard.classList.add('glow-red');
+    
+    setTimeout(() => {
+        alertCard.classList.remove('glow-red');
+    }, 2000);
+}
+
+// Global SOS
+window.triggerSOS = function(id, name) {
+    document.getElementById('sos-worker-details').innerText = `Worker ${id} (${name}) triggered a manual SOS code in Sector Alpha. Immediate dispatch required.`;
+    document.getElementById('sos-modal').classList.remove('hidden');
+    alertIncrement();
+    pushNotification(`MANUAL SOS: ${id} (${name})`, true);
+};
