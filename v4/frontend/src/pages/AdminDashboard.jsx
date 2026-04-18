@@ -3,7 +3,7 @@ import { io } from 'socket.io-client';
 import { Users, AlertTriangle, LogOut } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
-const socket = io('http://localhost:5000');
+const socket = io(import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000');
 
 export default function AdminDashboard() {
   const navigate = useNavigate();

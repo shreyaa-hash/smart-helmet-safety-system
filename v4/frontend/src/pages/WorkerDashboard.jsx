@@ -2,8 +2,7 @@ import { useEffect, useState } from 'react';
 import { io } from 'socket.io-client';
 import { Activity, Thermometer, Wind, AlertTriangle, LogOut } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-
-const socket = io('http://localhost:5000');
+const socket = io(import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000');
 
 export default function WorkerDashboard() {
   const navigate = useNavigate();
