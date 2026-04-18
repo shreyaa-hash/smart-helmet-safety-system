@@ -176,12 +176,13 @@
                     </div>
 
                     <form id="login-form" class="space-y-5">
+                        <div id="login-error" class="hidden bg-neonRed/10 border border-neonRed text-neonRed text-sm p-3 rounded-lg text-center font-medium"></div>
                         <div>
                             <label class="block text-xs font-semibold text-textMuted uppercase mb-1">Operator ID</label>
                             <div class="relative">
                                 <i
                                     class="fa-solid fa-user-astronaut absolute left-3 top-1/2 -translate-y-1/2 text-textMuted"></i>
-                                <input type="text" value="ADMIN-01"
+                                <input type="text" id="operator-id" placeholder="Operator ID"
                                     class="w-full bg-black/40 border border-white/10 rounded-lg py-2.5 pl-10 pr-4 text-white focus:outline-none focus:border-neonBlue focus:ring-1 focus:ring-neonBlue transition-all">
                             </div>
                         </div>
@@ -189,7 +190,7 @@
                             <label class="block text-xs font-semibold text-textMuted uppercase mb-1">Passcode</label>
                             <div class="relative">
                                 <i class="fa-solid fa-lock absolute left-3 top-1/2 -translate-y-1/2 text-textMuted"></i>
-                                <input type="password" value="********"
+                                <input type="password" id="passcode" placeholder="Passcode"
                                     class="w-full bg-black/40 border border-white/10 rounded-lg py-2.5 pl-10 pr-4 text-white focus:outline-none focus:border-neonBlue focus:ring-1 focus:ring-neonBlue transition-all">
                             </div>
                         </div>

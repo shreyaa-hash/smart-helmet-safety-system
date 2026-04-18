@@ -1,0 +1,26 @@
+@import "tailwindcss";
+
+@theme {
+  --color-darkBg: #090B10;
+  --color-panelBg: #121620;
+  --color-neonBlue: #00D1FF;
+  --color-neonGreen: #00FFA3;
+  --color-neonRed: #FF3B3B;
+  --color-neonYellow: #FFD600;
+  --color-textMuted: #94A3B8;
+}
+
+@layer base {
+  body {
+    background-color: var(--color-darkBg);
+    color: white;
+    -webkit-font-smoothing: antialiased;
+  }
+}
+
+.glass-panel {
+  background-color: color-mix(in srgb, var(--color-panelBg) 80%, transparent);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}

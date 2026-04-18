@@ -10,19 +10,51 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 1500);
 
     // Login Form Submit
-    document.getElementById('login-form').addEventListener('submit', (e) => {
+    document.getElementById('login-form').addEventListener('submit', async (e) => {
         e.preventDefault();
-        // Hide Login, Show Dashboard structure
-        document.getElementById('login-page').classList.remove('active');
-        document.getElementById('sidebar').classList.remove('hidden');
-        document.getElementById('sidebar').classList.add('flex');
-        document.getElementById('top-header').classList.remove('hidden');
-        document.getElementById('top-header').classList.add('flex');
-        
-        switchPage('dashboard');
-        
-        // Setup initial UI states
-        initChart();
+
+        const operatorId = document.getElementById('operator-id').value;
+        const passcode = document.getElementById('passcode').value;
+        const errorDiv = document.getElementById('login-error');
+        const submitBtn = document.querySelector('#login-form button[type="submit"]');
+
+        errorDiv.classList.add('hidden');
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fa-solid fa-spinner animate-spin"></i> AUTHENTICATING...';
+
+        try {
+            const response = await fetch('/api/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ operator_id: operatorId, passcode })
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                // Hide Login, Show Dashboard
+                document.getElementById('login-page').classList.remove('active');
+                document.getElementById('sidebar').classList.remove('hidden');
+                document.getElementById('sidebar').classList.add('flex');
+                document.getElementById('top-header').classList.remove('hidden');
+                document.getElementById('top-header').classList.add('flex');
+                
+                switchPage('dashboard');
+                
+                // Setup initial UI states
+                initChart();
+            } else {
+                errorDiv.innerText = data.message || 'Invalid Credentials';
+                errorDiv.classList.remove('hidden');
+            }
+        } catch (err) {
+            console.error('Login Error:', err);
+            errorDiv.innerHTML = `<strong>Error:</strong> ${err.message}<br><span style="font-size:10px;color:#aaa;">${err.stack || ''}</span>`;
+            errorDiv.classList.remove('hidden');
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = 'INITIALIZE UPLINK';
+        }
     });
 
     // Navigation Logic
